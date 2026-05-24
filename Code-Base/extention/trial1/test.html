@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Crusty Compatibility Runtime</title>
+		<style>
+			body {
+				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+				margin: 32px;
+				background: #0f1117;
+				color: #e6e6e6;
+			}
+			.card {
+				max-width: 820px;
+				background: #151923;
+				border: 1px solid #2a3142;
+				border-radius: 12px;
+				padding: 20px 24px;
+				box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+			}
+			h1 {
+				margin: 0 0 12px;
+				font-size: 24px;
+			}
+			p {
+				margin: 10px 0;
+				line-height: 1.5;
+			}
+			code {
+				background: #0b0e15;
+				padding: 2px 6px;
+				border-radius: 6px;
+			}
+			.btn {
+				display: inline-block;
+				margin-top: 12px;
+				padding: 10px 16px;
+				border-radius: 8px;
+				border: 1px solid #3a455d;
+				background: #1e2636;
+				color: #e6e6e6;
+				cursor: pointer;
+			}
+			.log {
+				margin-top: 16px;
+				font-size: 13px;
+				color: #b6c0d2;
+				white-space: pre-line;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="card">
+			<h1>Crusty Compatibility Runtime</h1>
+			<p>This harness loads the original extension runtime files with a minimal <code>chrome.*</code> shim.</p>
+			<p>Base path: <code id="base-path">../spotify-ad-blocker</code></p>
+			<p>Tip: run the HTTP server from <code>Code-Base/extention</code> so <code>/spotify-ad-blocker</code> is reachable.</p>
+			<p>Run order: <code>compat.js</code> -> <code>loader.js</code> -> <code>content_script.js</code> + <code>spot.js</code></p>
+
+			<button class="btn" id="start-runtime">Start runtime</button>
+			<div class="log" id="runtime-log">Waiting for start...</div>
+		</div>
+
+		<script>
+			var computedBase = new URL("../spotify-ad-blocker/", window.location.href).href.replace(/\/$/, "");
+			window.CRUSTY_EXT_BASE = computedBase;
+			window.CRUSTY_RUNTIME_ID = "crusty-runtime";
+			window.CRUSTY_COMPAT_VERBOSE = true;
+			window.CRUSTY_AUTO_START = false;
+			var baseEl = document.getElementById("base-path");
+			if (baseEl) {
+				baseEl.textContent = computedBase;
+			}
+		</script>
+		<script src="compat.js"></script>
+		<script src="loader.js"></script>
+		<script>
+			var logEl = document.getElementById("runtime-log");
+			fetch(window.CRUSTY_EXT_BASE + "/content_script.js", { method: "HEAD" })
+				.then(function (res) {
+					if (!res.ok) {
+						logEl.textContent = "Base not reachable. Serve from Code-Base/extention and open /trial1/test.html.";
+					}
+				})
+				.catch(function () {
+					logEl.textContent = "Base not reachable. Serve from Code-Base/extention and open /trial1/test.html.";
+				});
+			document.getElementById("start-runtime").addEventListener("click", function () {
+				logEl.textContent = "Starting...";
+				window.CrustyLoader.start().then(function (loaded) {
+					logEl.textContent = "Loaded: " + loaded.join(", ");
+				}).catch(function (err) {
+					logEl.textContent = "Load error: " + err.message;
+				});
+			});
+
+			window.addEventListener("crusty:message", function (event) {
+				logEl.textContent = "Last message: " + JSON.stringify(event.detail);
+			});
+		</script>
+	</body>
+</html>
